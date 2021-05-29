@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SBU Snake</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        h1, h2, p {
+            color: white;
+            font-family: 'Share Tech Mono', monospace;
+        }
+        body {
+            background-color: black;
+            text-align: center;
+        }
+        button {
+            color: white;
+            font-family: 'Share Tech Mono', monospace;
+            background-color: red;
+            border: none;
+            padding: 15px 32px;
+        }
+    </style>
+</head>
+<body onload="loadGame()">
+    <h1>SBU Snake Game</h1>
+    <h2>Samuel Ng 112330868</h2>
+</body>
+
+<script>
+    const tileSize = 20; // 1 tile = 20 pixels
+    const gridX = 36;
+    const gridY = 21;
+    // starting positions for the snake and apple
+    const snakeX = 10;
+    const snakeY = 10;
+    const appleX = 20;
+    const appleY = 10;
+    const courseArr = [101,114,160,161,214,215,216,220,300,303,306,307,310,311,312,316,320,327,334,337,351,352,354,371,373,376,380,385,416,506,512,526,527,532,540,541,544,545,548,550,555,564,566,600,645];
+    //test arr
+    //const courseArr = [101,114,160,161,214];
+    let remainingArr = [...courseArr];
+    let randomCourseIndex = Math.floor(Math.random() * remainingArr.length);
+    let trail = [];
+    let snakeHead;
+    let apple;
+    let snakeLength = 1;
+    let score = 0;
+    // gameArea is 36 tiles by 21 tiles
+    let gameArea = {
+        canvas: document.createElement("canvas"),
+        scoreMsg: document.createElement("p"),
+        lossMsg: document.createElement("p"),
+        restartBtn: document.createElement("button"),
+        start: function() {
+            this.canvas.width = gridX * tileSize;
+            this.canvas.height = gridY * tileSize;
+            this.canvas.style.backgroundColor = "white";
+            this.canvas.style.border = "1px solid black";
+            this.context = this.canvas.getContext("2d");
+            document.body.appendChild(this.canvas);
+            this.interval = setInterval(updateGameArea, 1000/2); // 2 frames per second
+            window.addEventListener("keydown", setGameKey);
+            this.scoreMsg.textContent = "Score: " + score;
+            document.body.appendChild(this.scoreMsg);
+            document.body.appendChild(this.lossMsg);
+            this.restartBtn.textContent = "Restart";
+            this.restartBtn.addEventListener("click", restartGame);
+            document.body.appendChild(this.restartBtn);
+        },
+        clear: function() {
+            this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+    }
+
+    // constructor for snake and apple components
+    function component(width, height, color, x, y, text) {
+        this.width = width;
+        this.height = height;
+        this.x = x;
+        this.y = y;
+        this.speedX = 0;
+        this.speedY = 0;
+        this.text = text;
+        this.update = function() {
+            ctx = gameArea.context;
+            ctx.fillStyle = "black";
+            ctx.fillRect(this.x*tileSize, this.y*tileSize, this.width, this.height);
+            ctx.fillStyle = color;
+            ctx.fillRect(this.x*tileSize+1, this.y*tileSize+1, this.width-2, this.height-2);
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "black";
+            ctx.fillText(this.text, (this.x*tileSize)+(this.width/2), (this.y*tileSize)+(this.height/2));
+        }
+        this.newPos = function() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+        }
+    }
+
+    function setGameKey(event) {
+        gameArea.key = event.keyCode;
+    }
+
+    function loadGame() {
+        gameArea.start();
+        snakeHead = new component(tileSize, tileSize, "lime", snakeX, snakeY, "");
+        apple = new component(tileSize, tileSize, "red", appleX, appleY, remainingArr[randomCourseIndex].toString());
+        slice1 = remainingArr.slice(0, randomCourseIndex);
+        slice2 = remainingArr.slice(randomCourseIndex+1, remainingArr.length);
+        remainingArr = slice1.concat(slice2);
+    }
+
+    function restartGame() {
+        location.reload();
+    }
+
+    function updateGameArea() {
+        gameArea.clear();
+        // loss condition1 offscreen
+        if (snakeHead.x < 0 || snakeHead.x >= gridX || snakeHead.y < 0 || snakeHead.y >= gridY) {
+            clearInterval(gameArea.interval);
+            gameArea.lossMsg.textContent = "You Lost! Mr. Snake has ran off the screen.";
+        }
+        if (snakeHead.x == apple.x && snakeHead.y == apple.y) {
+            snakeLength++;
+            gameArea.scoreMsg.textContent = "Score: " + ++score;
+            // win condition
+            if (score == courseArr.length) {
+                clearInterval(gameArea.interval);
+                gameArea.lossMsg.textContent = "You Win! All courses have been eaten.";
+            }
+            // ensure apple is not on top of snake
+            let matchArr = [];
+            do {
+                apple.x = Math.floor(Math.random() * gridX);
+                apple.y = Math.floor(Math.random() * gridY);
+                matchArr = trail.filter((comp) => (comp.x==apple.x && comp.y==apple.y));
+            }
+            while (matchArr.length > 0);
+            randomCourseIndex = Math.floor(Math.random() * remainingArr.length);
+            apple.text = remainingArr[randomCourseIndex].toString();
+            slice1 = remainingArr.slice(0, randomCourseIndex);
+            slice2 = remainingArr.slice(randomCourseIndex+1, remainingArr.length);
+            remainingArr = slice1.concat(slice2);
+        }
+        if (gameArea.key) {
+            switch (gameArea.key) {
+                case 37:
+                    if (snakeHead.speedX == 1) {
+                        snakeHead.speedX = 1;
+                        snakeHead.speedY = 0;
+                    }
+                    else {
+                        snakeHead.speedX = -1;
+                        snakeHead.speedY = 0;
+                    }
+                    break;
+                case 38:
+                    if (snakeHead.speedY == 1) {
+                        snakeHead.speedY = 1;
+                        snakeHead.speedX = 0;
+                    }
+                    else {
+                        snakeHead.speedY = -1;
+                        snakeHead.speedX = 0;
+                    }
+                    break;
+                case 39:
+                    if (snakeHead.speedX == -1) {
+                        snakeHead.speedX = -1;
+                        snakeHead.speedY = 0;
+                    }
+                    else {
+                        snakeHead.speedX = 1;
+                        snakeHead.speedY = 0;
+                    }
+                    break;
+                case 40:
+                    if (snakeHead.speedY == -1) {
+                        snakeHead.speedY = -1;
+                        snakeHead.speedX = 0;
+                    }
+                    else {
+                        snakeHead.speedY = 1;
+                        snakeHead.speedX = 0;
+                    }
+                    break; 
+            }
+        }
+        trail.push(new component(snakeHead.width, snakeHead.height, "lime", snakeHead.x, snakeHead.y, ""));
+        let tempX = snakeHead.x;
+        let tempY = snakeHead.y;
+        snakeHead.newPos();
+        while (trail.length > snakeLength) { // removes any extra trail elements
+            trail.shift();
+        }
+        for (let i = 0; i < trail.length; i++) {
+            trail[i].update();
+        }
+        // loss condition2 himself
+        if (tempX != snakeHead.x || tempY != snakeHead.y) {
+            for (let k = 0; k < trail.length; k++) {
+                if (snakeHead.x == trail[k].x && snakeHead.y == trail[k].y) {
+                    clearInterval(gameArea.interval);
+                    gameArea.lossMsg.textContent = "You Lost! Mr. Snake has ran into himself.";
+                }
+            }
+        }
+        apple.update();
+    }
+</script>
+</html>
